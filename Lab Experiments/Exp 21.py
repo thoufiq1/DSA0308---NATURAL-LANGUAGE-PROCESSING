@@ -1,35 +1,65 @@
-import spacy
+import nltk
+from nltk import word_tokenize, pos_tag
+from nltk.chunk import RegexpParser
+from nltk.corpus import wordnet
 
-# Load spaCy English model
-nlp = spacy.load("en_core_web_sm")
+# Download required NLTK resources (run once)
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
+nltk.download('wordnet')
 
-# Get sentence from user
+# Input sentence
 sentence = input("Enter a sentence: ")
 
-# Process the sentence
-doc = nlp(sentence)
+# Step 1: Tokenization
+words = word_tokenize(sentence)
 
-print("\nSyntax-Driven Semantic Analysis")
-print("-" * 50)
+# Step 2: Part-of-Speech Tagging
+tagged_words = pos_tag(words)
 
-# Extract noun phrases
-for chunk in doc.noun_chunks:
-    noun_phrase = chunk.text
-    head_word = chunk.root.text
+print("\nPOS Tagged Words:")
+print(tagged_words)
 
-    # Simple semantic interpretation
-    if head_word.lower() in ["student", "teacher", "doctor", "person", "man", "woman"]:
-        meaning = "Person"
-    elif head_word.lower() in ["college", "school", "company", "university", "hospital"]:
-        meaning = "Organization/Institution"
-    elif head_word.lower() in ["book", "laptop", "phone", "car", "computer"]:
-        meaning = "Object"
-    elif head_word.lower() in ["chennai", "india", "london", "paris"]:
-        meaning = "Location"
+# Step 3: Define grammar for Noun Phrase
+grammar = r"""
+    NP: {<DT>?<JJ.*>*<NN.*>+}
+"""
+
+# Create chunk parser
+chunk_parser = RegexpParser(grammar)
+
+# Step 4: Parse the sentence
+tree = chunk_parser.parse(tagged_words)
+
+print("\nNoun Phrases:")
+noun_phrases = []
+
+for subtree in tree.subtrees():
+    if subtree.label() == "NP":
+        np_words = [word for word, tag in subtree.leaves()]
+        noun_phrase = " ".join(np_words)
+        noun_phrases.append(np_words)
+
+        print(noun_phrase)
+
+# Step 5: Find meaning using WordNet
+print("\nSemantic Analysis:")
+
+for np_words in noun_phrases:
+
+    # Usually the last noun is treated as the head noun
+    head_word = np_words[-1]
+
+    synsets = wordnet.synsets(head_word)
+
+    if synsets:
+        meaning = synsets[0].definition()
+
+        print("\nNoun Phrase:", " ".join(np_words))
+        print("Head Word:", head_word)
+        print("Meaning:", meaning)
+
     else:
-        meaning = "General Entity"
-
-    print("Noun Phrase :", noun_phrase)
-    print("Head Word   :", head_word)
-    print("Meaning     :", meaning)
-    print("-" * 50)
+        print("\nNoun Phrase:", " ".join(np_words))
+        print("Head Word:", head_word)
+        print("Meaning: Meaning not found")
